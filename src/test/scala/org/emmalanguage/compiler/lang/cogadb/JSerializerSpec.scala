@@ -54,7 +54,7 @@ class JSerializerSpec extends FreeSpec with Matchers {
 
     //group by
     val attrRefSeq = Seq(ast.AttrRef("LINEITEM","L_ORDERKEY","L_ORDERKEY"),
-                        ast.AttrRef("ORDERS","O_ORDERDATE","O_ORDERDATE"),
+      ast.AttrRef("ORDERS","O_ORDERDATE","O_ORDERDATE"),
       ast.AttrRef("ORDERS","O_SHIPPRIORITY","O_SHIPPRIORITY"))
 
     val groupBy = ast.GroupBy(attrRefSeq, Seq(aggFunc), customerScanSimple)

@@ -34,7 +34,6 @@ class FlattenSpec extends FreeSpec with Matchers {
     val refs = Seq(a)
     val act = ast.flatten(refs)
     val exp = Seq((ast.AttrRef("a", "firstcol", "firstcol", 1)))
-    
     act should contain theSameElementsAs exp
 
 

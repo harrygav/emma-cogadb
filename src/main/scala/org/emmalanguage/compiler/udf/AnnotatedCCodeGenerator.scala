@@ -152,7 +152,7 @@ trait AnnotatedCCodeGenerator extends TypeHelper {
     }
     //    localVars += (name -> (tpt.tpe, name))
     generateAssignmentStmt(generateVarDef(tpt.tpe.toCPrimitive, name),
-                           generateAnnotatedCCode(symbolTable, rhs).mkString)
+      generateAnnotatedCCode(symbolTable, rhs).mkString)
   }
 
   protected def freshVarName: TermName
@@ -181,7 +181,7 @@ trait AnnotatedCCodeGenerator extends TypeHelper {
           val transformedThenp = thenp.stats.flatMap(generateAnnotatedCCode(symbolTable, _)) ++
             generateAssignmentStmt(s"$freshLocalVar", generateAnnotatedCCode(symbolTable, thenp.expr).mkString)
           val transformedElsep = generateAssignmentStmt(s"$freshLocalVar",
-                                                        generateAnnotatedCCode(symbolTable, elsep).mkString)
+            generateAnnotatedCCode(symbolTable, elsep).mkString)
 
           Seq(generateLineStmt(generateVarDef(ifAst.tpe.toCPrimitive, freshLocalVar))) ++
             generateIfThenElseStmt(transformedCond, transformedThenp, transformedElsep) ++
@@ -193,7 +193,7 @@ trait AnnotatedCCodeGenerator extends TypeHelper {
           val freshLocalVar = freshVarName
           val transformedCond = generateAnnotatedCCode(symbolTable, cond).mkString
           val transformedThenp = generateAssignmentStmt(s"$freshLocalVar",
-                                                        generateAnnotatedCCode(symbolTable, thenp).mkString)
+            generateAnnotatedCCode(symbolTable, thenp).mkString)
           val transformedElsep = elsep.stats.flatMap(generateAnnotatedCCode(symbolTable, _)) ++
             generateAssignmentStmt(s"$freshLocalVar", generateAnnotatedCCode(symbolTable, elsep.expr).mkString)
 
@@ -209,9 +209,9 @@ trait AnnotatedCCodeGenerator extends TypeHelper {
             val valDef = generateLineStmt(generateVarDef(ifAst.tpe.toCPrimitive, freshLocalVar))
             val transformedCond = generateAnnotatedCCode(symbolTable, cond).mkString
             val transformedThenp = generateAssignmentStmt(s"$freshLocalVar",
-                                                          generateAnnotatedCCode(symbolTable, thenp).mkString)
+              generateAnnotatedCCode(symbolTable, thenp).mkString)
             val transformedElsep = generateAssignmentStmt(s"$freshLocalVar",
-                                                          generateAnnotatedCCode(symbolTable, elsep).mkString)
+              generateAnnotatedCCode(symbolTable, elsep).mkString)
             val finalUDFStmt = generateAssignmentStmt(generateOutputExpr(newUDFOutput(ifAst.tpe)), s"$freshLocalVar")
             Seq(valDef) ++
               generateIfThenElseStmt(transformedCond, transformedThenp, transformedElsep) ++
@@ -249,7 +249,7 @@ trait AnnotatedCCodeGenerator extends TypeHelper {
         //if input parameter, otherwise local variable
         if (symbolTable isDefinedAt ide.name.toString) {
           generateAssignmentStmt(generateOutputExpr(newUDFOutput(ide.tpe)),
-                                 generateColAccess(symbolTable(ide.name.toString), basicTypeColumnIdentifier, false))
+            generateColAccess(symbolTable(ide.name.toString), basicTypeColumnIdentifier, false))
         } else {
           generateAssignmentStmt(generateOutputExpr(newUDFOutput(ide.tpe)), ide.name.toString)
         }
@@ -324,7 +324,7 @@ trait AnnotatedCCodeGenerator extends TypeHelper {
             case _ =>
               generateAssignmentStmt(generateOutputExpr(newUDFOutput(tuple._2.tpe, s"$infix${tuple._1}_")),
                 generateAnnotatedCCode(symbolTable, tuple._2).mkString)
-                       })
+          })
     } else {
       generateAssignmentStmt(
         generateOutputExpr(newUDFOutput(app.tpe, infix)),
@@ -349,14 +349,14 @@ trait AnnotatedCCodeGenerator extends TypeHelper {
     } else {
       if (isSupportedBinaryMethod(sel.name)) {
         Seq(generateBinaryOp(sel.name.toTermName, generateAnnotatedCCode(symbolTable, sel.qualifier).mkString,
-                             generateAnnotatedCCode(symbolTable, args.head).mkString))
+          generateAnnotatedCCode(symbolTable, args.head).mkString))
       } else if (isSupportedLibrary(sel.qualifier)) {
         args.size match {
           case 1 => Seq(generateUnaryOp(sel.name.toTermName, generateAnnotatedCCode(symbolTable, args(0)).mkString))
           case 2 => Seq(generateBinaryOp(sel.name.toTermName, generateAnnotatedCCode(symbolTable, args(0)).mkString,
-                                         generateAnnotatedCCode(symbolTable, args(1)).mkString))
+            generateAnnotatedCCode(symbolTable, args(1)).mkString))
           case _ => throw new IllegalArgumentException(s"Select ${sel.name.toString} with ${args.size} arguments " +
-                                                         "not supported.")
+            "not supported.")
         }
       } else {
         throw new IllegalArgumentException(s"Apply ${sel.name.toString} not supported.")

@@ -16,10 +16,10 @@
 package org.emmalanguage
 package runtime
 
-import org.emmalanguage.api.CoGaDBTable
-import org.emmalanguage.compiler.lang.cogadb._
-import org.emmalanguage.compiler.udf.UDFTransformer
-import org.emmalanguage.compiler.udf.common.MapUDFClosure
+import api.CoGaDBTable
+import compiler.lang.cogadb._
+import compiler.udf.UDFTransformer
+import compiler.udf.common.MapUDFClosure
 
 import org.scalatest._
 

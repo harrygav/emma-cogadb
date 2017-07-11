@@ -17,12 +17,12 @@ package org.emmalanguage
 package runtime
 
 import compiler.lang.cogadb.ast
-import org.emmalanguage.api.CoGaDBTable
-import org.emmalanguage.compiler.udf.ReduceUDFGenerator
-import org.emmalanguage.compiler.udf.UDFTransformer
-import org.emmalanguage.compiler.udf.common.MapUDFClosure
-import org.emmalanguage.io.csv.CSV
-import org.emmalanguage.io.csv.CSVScalaSupport
+import api.CoGaDBTable
+import compiler.udf.ReduceUDFGenerator
+import compiler.udf.UDFTransformer
+import compiler.udf.common.MapUDFClosure
+import io.csv.CSV
+import io.csv.CSVScalaSupport
 
 import org.scalatest._
 

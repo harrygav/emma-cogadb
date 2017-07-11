@@ -16,9 +16,9 @@
 package org.emmalanguage
 package compiler.udf
 
-import org.emmalanguage.compiler.lang.cogadb.ast._
-import org.emmalanguage.compiler.udf.UDFCompiler.UDFType.UDFType
-import org.emmalanguage.compiler.udf.common._
+import compiler.lang.cogadb.ast._
+import compiler.udf.UDFCompiler.UDFType.UDFType
+import compiler.udf.common._
 
 import scala.reflect.runtime.universe._
 import scala.tools.reflect.ToolBox

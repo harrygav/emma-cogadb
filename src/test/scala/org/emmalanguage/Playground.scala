@@ -35,10 +35,6 @@ object Playground extends CoGaDBAware {
         x <- xs
       } yield x._2*/
 
-/*      val zs = for {
-        x <- ys
-      } yield x._2*/
-
       val t = zs.collect().toList
 
       //val s = as.collect().toList

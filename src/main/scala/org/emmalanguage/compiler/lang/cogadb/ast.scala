@@ -16,10 +16,13 @@
 package org.emmalanguage
 package compiler.lang.cogadb
 
+// scalastyle:off number.of.methods
+// scalastyle:off number.of.types
+
+
 /** An abstract syntax tree for CoGaDB plans. */
 object ast {
 
-  // scalastyle:off number.of.methods
 
   trait Result
 
@@ -62,8 +65,11 @@ object ast {
   // ---------------------------------------------------------------------------
   // Leafs
   // ---------------------------------------------------------------------------
+  // scalastyle:off
   case class SortCol(table: String, col: String, atype: String,
     result: String, version: Short = 1, order: String) extends Node
+
+  // scalastyle:on
   case class SchemaAttr(atype: String, aname: String) extends Node
 
   trait Ref extends Node
@@ -86,9 +92,10 @@ object ast {
   sealed trait AggFunc extends Op
   case class AggFuncSimple(aggFunc: String, attrRef: AttrRef, result: String) extends AggFunc
   case class AggFuncReduce(reduceUdf: AggFunc) extends AggFunc
-  case class AlgebraicReduceUdf(reduceUdfPayload: Seq[ReduceUdfPayAttrRef],
-    reduceUdfOutAttr: Seq[ReduceUdfOutAttr], reduceUdfCode: Seq[ReduceUdfCode], reduceUdfFinalCode: Seq[ReduceUdfCode])
-    extends AggFunc
+  // scalastyle:off
+  case class AlgebraicReduceUdf(reduceUdfPayload: Seq[ReduceUdfPayAttrRef], reduceUdfOutAttr: Seq[ReduceUdfOutAttr],
+    reduceUdfCode: Seq[ReduceUdfCode], reduceUdfFinalCode: Seq[ReduceUdfCode]) extends AggFunc
+  // scalastyle:on
   //TODO: add other possible aggregation functions
 
   //Ricky
@@ -152,7 +159,8 @@ object ast {
     case StructRef(fields) => flatten(fields.map(_._2))
   }
 
-
-  // scalastyle:on number.of.methods
-
 }
+
+// scalastyle:on number.of.methods
+// scalastyle:off number.of.types
+

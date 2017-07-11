@@ -59,7 +59,7 @@ object CoGaDBOps extends ComprehensionCombinators[CoGaDB] with Runtime[CoGaDB] {
 
   def cache[A: Meta](xs: DataBag[A])(implicit cogadb: CoGaDB): DataBag[A] =
     xs match {
-        //materialize
+      //materialize
       //case xs: SparkDataset[A] => SparkDataset.wrap(xs.rep.cache())
       //case xs: SparkRDD[A] => SparkRDD.wrap(xs.rep.cache())
       case _ => xs

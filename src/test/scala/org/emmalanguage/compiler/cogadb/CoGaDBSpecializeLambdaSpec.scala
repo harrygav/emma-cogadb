@@ -16,10 +16,10 @@
 package org.emmalanguage
 package compiler.cogadb
 
+import api.CoGaDBTable
+import api.cogadb.CoGaDBNtv
 import compiler.BaseCompilerSpec
 import compiler.lang.cogadb.ast
-import org.emmalanguage.api.CoGaDBTable
-import org.emmalanguage.api.cogadb.CoGaDBNtv
 import test.schema.Literature._
 
 import scala.collection.breakOut

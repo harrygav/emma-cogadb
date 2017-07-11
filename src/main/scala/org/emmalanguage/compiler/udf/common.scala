@@ -23,11 +23,11 @@ import scala.reflect.runtime.universe._
 object common {
 
   sealed abstract class UDFClosure(symTbl: Map[String, String])
-  
+
   case class MapUDFClosure(ast: Tree, symTbl: Map[String, String], child: Op) extends UDFClosure(symTbl)
 
   case class FilterUDFClosure(ast: Tree, symTbl: Map[String, String], child: Op) extends UDFClosure(symTbl)
-  
+
   case class FoldUDFClosure(zElem: Tree, sngAst: Tree, uniAst: Tree, symTbl: Map[String, String], child: Op)
     extends UDFClosure(symTbl)
 

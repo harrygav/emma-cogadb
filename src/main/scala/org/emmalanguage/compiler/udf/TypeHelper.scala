@@ -59,13 +59,9 @@ trait TypeHelper {
       case Some(value) => value
       case None => throw new IllegalArgumentException(s"No existing JSON attribute type for $t.")
     }
-    
+
     def finalType = t.finalResultType.widen
-
     def isScalaBasicType: Boolean = basicTypes.contains(t.finalType)
-
     def isTuple: Boolean = !t.typeArgs.isEmpty
   }
-
-
 }

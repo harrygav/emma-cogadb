@@ -19,14 +19,13 @@ package org.emmalanguage
 //import org.apache.log4j.Logger
 import runtime.CoGaDB
 
-
-import java.nio.file.Paths
 import java.nio.file.Path
+import java.nio.file.Paths
 
 
 trait CoGaDBAware {
 
- // Logger.getLogger("org.apache.spark").setLevel(org.apache.log4j.Level.WARN)
+  //Logger.getLogger("org.apache.spark").setLevel(org.apache.log4j.Level.WARN)
 
   protected trait CoGaDBConfig {
     val cogaDBPath: Path

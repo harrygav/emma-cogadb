@@ -16,10 +16,10 @@
 package org.emmalanguage
 package api
 
-import runtime.CoGaDB
 import compiler.lang.cogadb.ast
-import org.emmalanguage.compiler.udf.UDFTransformer
-import org.emmalanguage.compiler.udf.common.MapUDFClosure
+import compiler.udf.UDFTransformer
+import compiler.udf.common.MapUDFClosure
+import runtime.CoGaDB
 
 import org.scalatest._
 
@@ -42,10 +42,13 @@ import scala.tools.reflect.ToolBox
  */
 class TPCHSpec extends FreeSpec with Matchers with CoGaDBSpec {
 
+  // scalastyle:off
   case class Lineitem(l_orderkey: Int, l_partkey: Int, l_suppkey: Int, l_linenumber: Int, l_quantity: Double,
     l_extendedprice: Double, l_discount: Double, l_tax: Double, l_returnflag: String, l_linestatus: String,
     l_shipdate: String, l_commitdate: String, l_receiptdate: String, l_shipinstruct: String, l_shipmode: String,
     l_comment: String)
+
+  // scalastyle:on
 
   val tb = runtimeMirror(getClass.getClassLoader).mkToolBox()
 
