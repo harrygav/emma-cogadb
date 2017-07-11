@@ -19,7 +19,7 @@ import api._
 object Playground extends CoGaDBAware {
 
   def main(args: Array[String]): Unit =
-    withDefaultCoGaDBRuntime(implicit cogadb => /*emma.onCoGaDB("debug.conf")*/ {
+    withCoGaDB(implicit cogadb => /*emma.onCoGaDB("debug.conf")*/ {
 
       val xs = DataBag(Seq(1 -> 2, 2 -> 3, 3 -> 4))
       val ys = DataBag(Seq(1 -> "foo", 2 -> "bar"))

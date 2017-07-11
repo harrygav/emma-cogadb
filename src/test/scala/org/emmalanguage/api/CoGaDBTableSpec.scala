@@ -17,40 +17,13 @@ package org.emmalanguage
 package api
 
 import runtime.CoGaDB
-import test.util._
 import test.schema.Literature._
 import api.Meta.Projections._
 
-import org.scalatest.BeforeAndAfter
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers
-import org.scalatest.prop.PropertyChecks
 
-
-import java.io.File
-import java.nio.file.Paths
-
-class CoGaDBTableSpec extends FreeSpec with Matchers with BeforeAndAfter with PropertyChecks with DataBagEquality {
-
-
-  val dir = "/cogadb"
-  val path = tempPath("/cogadb")
-  val coGaDBPath = Paths.get(Option(System.getenv("COGADB_HOME")) getOrElse "/tmp/cogadb/")
-  val configPath = Paths.get(materializeResource(s"$dir/tpch.coga"))
-
-  before {
-    new File(path).mkdirs()
-  }
-
-  after {
-    deleteRecursive(new File(path))
-  }
-
-  protected def setupCoGaDB(): CoGaDB =
-    CoGaDB(coGaDBPath, configPath)
-
-  protected def destroyCoGaDB(cogadb: CoGaDB): Unit =
-    cogadb.destroy()
+class CoGaDBTableSpec extends FreeSpec with Matchers with CoGaDBSpec {
 
   // ---------------------------------------------------------------------------
   // abstract trait methods
@@ -69,15 +42,10 @@ class CoGaDBTableSpec extends FreeSpec with Matchers with BeforeAndAfter with Pr
   def suffix: String = "cogadb"
 
   /** A function providing a backend context instance which lives for the duration of `f`. */
-  def withBackendContext[T](f: BackendContext => T): T = {
-    val cogadb = setupCoGaDB()
-    val result = f(cogadb)
-    destroyCoGaDB(cogadb)
-    result
-  }
+  def withBackendContext[T](f: BackendContext => T): T = withCoGaDB(f)
 
   "monad ops" - {
-    "map" in withBackendContext { implicit ctx =>
+    "map" ignore withBackendContext { implicit ctx =>
       val act = TestBag(hhCrts.map(c => (c.book.title,c.name)))
         .map(c => c._1)
 

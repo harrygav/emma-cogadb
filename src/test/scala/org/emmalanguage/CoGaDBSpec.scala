@@ -15,6 +15,7 @@
  */
 package org.emmalanguage
 
+import org.emmalanguage.api.DataBagEquality
 import runtime.CoGaDB
 import test.util._
 
@@ -23,30 +24,23 @@ import org.scalatest._
 import java.io.File
 import java.nio.file.Paths
 
-trait CoGaDBSpec extends BeforeAndAfter {
+trait CoGaDBSpec extends BeforeAndAfter with DataBagEquality with CoGaDBAware {
   this: Suite =>
 
-  val dir = "/cogadb"
-  val path = tempPath("/cogadb")
-  val coGaDBPath = Paths.get(Option(System.getenv("COGADB_HOME")) getOrElse "/path/to/cogadb/build")
-  val configPath = Paths.get(materializeResource(s"$dir/tpch.coga"))
+  val resPath = "/cogadb"
+  val tmpPath = tempPath(resPath)
+  val configPath = Paths.get(materializeResource(s"$resPath/default.coga"))
 
   before {
-    new File(path).mkdirs()
+    new File(tmpPath).mkdirs()
   }
 
   after {
-    deleteRecursive(new File(path))
+    deleteRecursive(new File(tmpPath))
   }
 
-  protected def setupCoGaDB(): CoGaDB =
-    CoGaDB(coGaDBPath, configPath)
-
-  protected def destroyCoGaDB(cogadb: CoGaDB): Unit =
-    cogadb.destroy()
-
-  protected def withCoGaDB[R](f: CoGaDB => R): R = {
-    val cogadb = setupCoGaDB()
+  override def withCoGaDB[T](f: CoGaDB => T): T = {
+    val cogadb = setupCoGaDB(CoGaDB.Config(configPath = configPath))
     val result = f(cogadb)
     destroyCoGaDB(cogadb)
     result

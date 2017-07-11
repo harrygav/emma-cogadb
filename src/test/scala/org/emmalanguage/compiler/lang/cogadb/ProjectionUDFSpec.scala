@@ -20,7 +20,7 @@ import compiler.BaseCompilerSpec
 import compiler.CoGaDBCompiler
 import compiler.RuntimeCompiler
 
-class ProjectionUDFSpec extends BaseCompilerSpec with CoGaDBAware {
+class ProjectionUDFSpec extends BaseCompilerSpec with CoGaDBSpec {
 
   override val compiler = new RuntimeCompiler with CoGaDBCompiler
 
@@ -40,7 +40,7 @@ class ProjectionUDFSpec extends BaseCompilerSpec with CoGaDBAware {
   }).head
 
 
-  "simple projection" in withDefaultCoGaDBRuntime(implicit cogadb => {
+  "simple projection" in withCoGaDB(implicit cogadb => {
     val act = testPipeline(reify {
       (x: (Int, Double, String)) => {
         val u: Int = x._1
@@ -59,7 +59,7 @@ class ProjectionUDFSpec extends BaseCompilerSpec with CoGaDBAware {
     act shouldBe alphaEqTo(exp)
   })
 
-  "complex projection" in withDefaultCoGaDBRuntime(implicit cogadb => {
+  "complex projection" in withCoGaDB(implicit cogadb => {
     val act = testPipeline(reify {
       (x: (Int, Double, String)) => {
         val u: Int = x._1

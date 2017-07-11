@@ -29,9 +29,10 @@ import sys.process._
 import java.io._
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 
 /** CoGaDB runtime. */
-class CoGaDB private(coGaDBPath: Path, configPath: Path) {
+class CoGaDB private(c: CoGaDB.Config) {
 
   import CoGaDB.ExecutionException
   import CoGaDB.csv
@@ -39,7 +40,7 @@ class CoGaDB private(coGaDBPath: Path, configPath: Path) {
   import CoGaDB.schemaForType
 
   /** The underlying CoGaDB process. */
-  val inst = Seq(coGaDBPath.toString, configPath.toString).run(true)
+  val inst = Seq(c.coGaDBPath.resolve("bin/cogadbd").toString, c.configPath.toString).run(true)
   /** The tmp path for this CoGaDB session. */
   val tempPath = Files.createTempDirectory("emma-cogadbd").toAbsolutePath
   /** A stream of dataflow names to be consumed by the session. */
@@ -127,12 +128,18 @@ class CoGaDB private(coGaDBPath: Path, configPath: Path) {
 
 object CoGaDB {
 
+  case class Config
+  (
+    coGaDBPath: Path = Paths.get(Option(System.getenv("COGADB_PATH")) getOrElse "/tmp/cogadb"),
+    configPath: Path = Paths.get(getClass.getResource("/cogadb/default.coga").toURI)
+  )
+
   case class ExecutionException(message: String, cause: Throwable) extends RuntimeException
 
   val csv = CSV(delimiter = '|', quote = Some(' '), skipRows = 1)
 
-  def apply(coGaDBPath: Path, configPath: Path): CoGaDB =
-    new CoGaDB(coGaDBPath.resolve("bin/cogadbd"), configPath)
+  def apply(c: CoGaDB.Config): CoGaDB =
+    new CoGaDB(c)
 
   // ---------------------------------------------------------------------------
   // Memoized, Runtime Generated CSVConverter[T] and Schema[T] instances

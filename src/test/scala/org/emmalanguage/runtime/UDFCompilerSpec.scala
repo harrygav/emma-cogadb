@@ -50,7 +50,7 @@ class UDFCompilerSpec extends FreeSpec with Matchers with CoGaDBSpec {
     //val tmp = cogadb.execute(UDFCompiler.compile(scanA, UDFType.Map, Map[String, String]("t" -> "SOURCE0000"), fun1))
     val exp = Seq((1, "foo", 2), (2, "bar", 3))
 
-    act.collect() should contain theSameElementsAs (exp)
+    act.collect() should contain theSameElementsAs exp
 
   }
 
@@ -80,7 +80,7 @@ class UDFCompilerSpec extends FreeSpec with Matchers with CoGaDBSpec {
     //val tmp = cogadb.execute(UDFCompiler.compile(scanA, UDFType.Map, Map[String, String]("t" -> "SOURCE0000"), fun1))
     val exp = Seq((2, "foo"), (3, "bar"))
 
-    act.collect() should contain theSameElementsAs (exp)
+    act.collect() should contain theSameElementsAs exp
 
   }
 
@@ -117,7 +117,7 @@ class UDFCompilerSpec extends FreeSpec with Matchers with CoGaDBSpec {
 
     val exp = Seq(("foo", 3), ("bar", 4))
 
-    next should contain theSameElementsAs (exp)
+    next should contain theSameElementsAs exp
 
   }
 
