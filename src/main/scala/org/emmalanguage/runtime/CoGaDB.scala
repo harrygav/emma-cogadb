@@ -46,6 +46,9 @@ class CoGaDB private(c: CoGaDB.Config) {
   /** A stream of dataflow names to be consumed by the session. */
   var dflNames = Stream.iterate(0)(_ + 1).map(i => f"dataflow$i%04d").toIterator
 
+  // give the `cogadbd` process some time to start listening to port 8000
+  try { Thread.sleep(100) } catch { case _: Exception => () }
+
   /** Destroy the CoGaDB instance on shutdown. */
   sys.addShutdownHook(destroy())
 
@@ -89,9 +92,12 @@ class CoGaDB private(c: CoGaDB.Config) {
 
   private def execute(dfl: ast.Op, dflName: String) =
     try {
+      val cmd = s"echo execute_query_from_json ${saveJson(dfl, dflName)} | nc localhost 8000"
       (s"echo execute_query_from_json ${saveJson(dfl, dflName)}" #| "nc localhost 8000").!!
     } catch {
-      case e: Exception => throw ExecutionException(s"Cannot execute CoGaDB query `$dflName`: $e", e)
+      case e: Exception =>
+        val z = e
+        throw ExecutionException(s"Cannot execute CoGaDB query `$dflName`: $e", e)
     }
 
   private def saveJson(dfl: ast.Op, dflName: String): Path = {
