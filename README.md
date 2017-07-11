@@ -65,7 +65,7 @@ cd bin
 
 If you plan using CoGaDB in standalone mode, consider using `startup.coga` as a configuration file.
 It should be located in the `bin` directory of your build and can be useful for executing generated (or hardcoded) dataflows directly at startup.
-A sample configuration file can be found [here](https://github.com/harrygav/emma/blob/cogadb/emma-cogadb/src/test/resources/cogadb/tpch.coga)
+A sample configuration file can be found [here](https://github.com/emmalanguage/emma-cogadb/blob/master/src/test/resources/cogadb/tpch.coga)
 
 In order to run the `emma-cogadb` tests, define a `COGADB_PATH` variable in your `~/.profile` (you have to restart your Linux session before the changes can take effect).
 

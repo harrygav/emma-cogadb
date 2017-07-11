@@ -14,115 +14,122 @@
  * limitations under the License.
  */
 package org.emmalanguage
-package api
+package runtime
 
-import runtime.CoGaDB
+import api.CoGaDBTable
 import compiler.lang.cogadb.ast
 
 import org.scalatest._
 
 class RuntimeSpec extends FreeSpec with Matchers with CoGaDBSpec {
 
+  "create and fetch" - {
+    "tuples of strings" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq(("foo", "bar"), ("Hello", "World"))
+      val act = CoGaDBTable(exp).collect()
 
-  "create and fetch tuples of strings" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq(("foo", "bar"), ("Hello", "World"))
-    val act = CoGaDBTable(exp).collect()
+      act shouldBe exp
+    }
 
-    act shouldBe exp
+    "triples of strings" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq(("foo", "bar"), ("Hello", "World"), ("These are", "Two words"))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+
+    "tuples of doubles" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1.1, 2.1), (2.1, 3.1))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "triples of doubles" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1.1, 2.1, 3.1), (1.2, 2.2, 3.2))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+
+    "pair of ints and strings" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1, "Foo"), (2, "Bar"))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "pair of ints and char" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1, 'F'), (2, 'B'))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "tuples of ints and floats" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1, 1.1F), (2, 2.2F))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "tuples of floats" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1.1F, 1.2F), (2.1F, 2.2F))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "triples of floats" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1.1F, 1.2F, 1.3F), (2.1F, 2.2F, 2.3F))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "quadruples of floats" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1.1F, 1.2F, 1.3F, 1.4F), (2.1F, 2.2F, 2.3F, 2.4F))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "quintuples of floats" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1.1F, 1.2F, 1.3F, 1.4F, 1.5F), (2.1F, 2.2F, 2.3F, 2.4F, 2.5F))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "sextuples of floats" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1.1F, 1.2F, 1.3F, 1.4F, 1.5F, 1.6F), (2.1F, 2.2F, 2.3F, 2.4F, 2.5F, 2.6F))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+
+    "tuples of ints" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1, 2), (3, 4))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "triples of ints" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1, 2, 3), (7, 8, 9))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "quintuples of ints" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1, 2, 3, 4, 5), (7, 8, 9, 10, 11))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+    "sextuples of ints" in withCoGaDB { implicit cogadb: CoGaDB =>
+      val exp = Seq((1, 2, 3, 4, 5, 6), (7, 8, 9, 10, 11, 12))
+      val act = CoGaDBTable(exp).collect()
+
+      act shouldBe exp
+    }
+
+    "empty" in withCoGaDB { implicit cogadb: CoGaDB =>
+      CoGaDBTable.empty[Int].collect() shouldBe Seq.empty[Int]
+    }
   }
-  "create and fetch triples of strings" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq(("foo", "bar"), ("Hello", "World"), ("These are", "Two words"))
-    val act = CoGaDBTable(exp).collect()
 
-    act shouldBe exp
-  }
-
-  "create and fetch tuples of doubles" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1.1, 2.1), (2.1, 3.1))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch triples of doubles" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1.1, 2.1, 3.1), (1.2, 2.2, 3.2))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-
-  "create and fetch pair of ints and strings" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1, "Foo"), (2, "Bar"))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch pair of ints and char" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1, 'F'), (2, 'B'))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch tuples of ints and floats" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1, 1.1F), (2, 2.2F))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch tuples of floats" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1.1F, 1.2F), (2.1F, 2.2F))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch triples of floats" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1.1F, 1.2F, 1.3F), (2.1F, 2.2F, 2.3F))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch quadruples of floats" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1.1F, 1.2F, 1.3F, 1.4F), (2.1F, 2.2F, 2.3F, 2.4F))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch quintuples of floats" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1.1F, 1.2F, 1.3F, 1.4F, 1.5F), (2.1F, 2.2F, 2.3F, 2.4F, 2.5F))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch sextuples of floats" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1.1F, 1.2F, 1.3F, 1.4F, 1.5F, 1.6F), (2.1F, 2.2F, 2.3F, 2.4F, 2.5F, 2.6F))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-
-  "create and fetch tuples of ints" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1, 2), (3, 4))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch triples of ints" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1, 2, 3), (7, 8, 9))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch quintuples of ints" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1, 2, 3, 4, 5), (7, 8, 9, 10, 11))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
-  "create and fetch sextuples of ints" in withCoGaDB { implicit cogadb: CoGaDB =>
-    val exp = Seq((1, 2, 3, 4, 5, 6), (7, 8, 9, 10, 11, 12))
-    val act = CoGaDBTable(exp).collect()
-
-    act shouldBe exp
-  }
 
 
   "test cross join" in withCoGaDB { implicit cogadb: CoGaDB =>
@@ -142,10 +149,6 @@ class RuntimeSpec extends FreeSpec with Matchers with CoGaDBSpec {
     act.collect().toList should contain theSameElementsAs exp
   }
 
-  "create and fetch empty" in withCoGaDB { implicit cogadb: CoGaDB =>
-    CoGaDBTable.empty[Int].collect() shouldBe Seq.empty[Int]
-  }
-
   "test join" in withCoGaDB { implicit cogadb: CoGaDB =>
 
     val as = new CoGaDBTable[(Int, String)](cogadb.importSeq(Seq((1, "Foo"), (2, "Hello"))))
@@ -159,6 +162,7 @@ class RuntimeSpec extends FreeSpec with Matchers with CoGaDBSpec {
           cmp = ast.Equal
         )
       )
+
       val projectedFields = Seq(
         as.ref("_1", "_1"),
         as.ref("_2", "_2"),

@@ -402,8 +402,8 @@
                 <configuration>
                     <!-- Configuration -->
                     <verbose>false</verbose>
-                    <failOnViolation>false</failOnViolation>
-                    <failOnWarning>false</failOnWarning>
+                    <failOnViolation>true</failOnViolation>
+                    <failOnWarning>true</failOnWarning>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
                     <sourceDirectory>${project.basedir}/src/main/scala</sourceDirectory>
                     <testSourceDirectory>${project.basedir}/src/test/scala</testSourceDirectory>
