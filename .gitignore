@@ -18,6 +18,9 @@ dependency-reduced-pom.xml
 .ensime
 .ensime_cache
 
+# CoGaDB junk
+cogascript_timings.log
+
 # Include some IntelliJ settings
 !.idea/codeStyleSettings.xml
 !.idea/copyright/

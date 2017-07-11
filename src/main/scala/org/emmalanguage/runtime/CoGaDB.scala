@@ -113,7 +113,7 @@ class CoGaDB private(c: CoGaDB.Config) {
 
   def destroy(): Unit = {
     inst.destroy()
-    //deleteRecursive(tempPath.toFile)
+    deleteRecursive(tempPath.toFile)
   }
 
   /** Deletes a file recursively. */

@@ -24,18 +24,18 @@ import org.scalatest._
 import java.io.File
 import java.nio.file.Paths
 
-trait CoGaDBSpec extends BeforeAndAfter with DataBagEquality with CoGaDBAware {
+trait CoGaDBSpec extends BeforeAndAfterAll with DataBagEquality with CoGaDBAware {
   this: Suite =>
 
   val resPath = "/cogadb"
   val tmpPath = tempPath(resPath)
   val configPath = Paths.get(materializeResource(s"$resPath/default.coga"))
 
-  before {
+  override def beforeAll(): Unit = {
     new File(tmpPath).mkdirs()
   }
 
-  after {
+  override def afterAll(): Unit = {
     deleteRecursive(new File(tmpPath))
   }
 
