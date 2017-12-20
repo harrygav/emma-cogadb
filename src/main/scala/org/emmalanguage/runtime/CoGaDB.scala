@@ -45,6 +45,8 @@ class CoGaDB private(c: CoGaDB.Config) {
   val tempPath = Files.createTempDirectory("emma-cogadbd").toAbsolutePath
   /** A stream of dataflow names to be consumed by the session. */
   var dflNames = Stream.iterate(0)(_ + 1).map(i => f"dataflow$i%04d").toIterator
+  /** The schema of each dataflow. */
+  var dflSchema = Map[String, Seq[ast.SchemaAttr]]()
 
   // give the `cogadbd` process some time to start listening to port 8000
   try { Thread.sleep(100) } catch { case _: Exception => () }
@@ -64,7 +66,10 @@ class CoGaDB private(c: CoGaDB.Config) {
     // write `seq` into a fresh CSV file
     CSVScalaSupport[A](csv).write(datPath.toString)(seq)
     // create an "import from csv" dataflow
-    val impDfl = ast.ImportFromCsv(dflName, datPath.toString, "|", schemaForType.fields())
+    val schema = schemaForType.fields()
+    val impDfl = ast.ImportFromCsv(dflName, datPath.toString, "|", schema)
+    //store schema of dataflow in HashMap
+    dflSchema += (dflName -> schema)
     // import dataflow must be wrapped by a STORE_TABLE operator in CoGaDB, in order to be materialized
     val matDfl = ast.MaterializeResult(dflName, false, impDfl)
     // execute the dataflow
@@ -90,9 +95,100 @@ class CoGaDB private(c: CoGaDB.Config) {
     CSVScalaSupport[A](csv).read(datPath.toString).toStream
   }
 
+  /**
+   * Save a [[CoGaDB]] table.
+   *
+   * @return An [[ast.TableScan]] over the saved table.
+   */
+  def saveSeq[A: Meta](dfl: ast.Op): ast.TableScan = {
+    val dflName = dflNames.next()
+    val datPath = tempPath.resolve(s"$dflName.csv")
+
+    //put correct schema
+    dflSchema += (dflName -> Seq(ast.SchemaAttr("INT","test")))
+    // use the Rename operator to create a fresh table
+    val fresh = ast.Rename(getAttrSeq(dfl), dfl)
+    // rename stored in STORE_TABLE
+    val matDfl = ast.MaterializeResult(dflName, false, fresh)
+    // execute the dataflow
+    execute(matDfl, dflName)
+    // return a ast.TableScan for the imported table
+    ast.TableScan(dflName.toUpperCase())
+  }
+
+  private def getAttrSeq(dfl: ast.Op, start: Int = 1): Seq[ast.AttrRef] = {
+    dfl match {
+      case ast.TableScan(curDflName, _) => {
+        val attrs = dflSchema.get(curDflName.toLowerCase).head
+        var myStart = start - 1
+        attrs.map { x =>
+          myStart += 1
+          x match {
+            case schemaAttr@ast.SchemaAttr(atype, aname) => ast.AttrRef(curDflName, aname, "_" + myStart)
+            case _ => ast.AttrRef("ERROR", "", "")
+          }
+        }
+      }
+      case ast.AlgebraicReduceUdf(_, outAttrs, _, _) => {
+        var myStart = start - 1
+        outAttrs.map { x =>
+          myStart += 1
+          x match {
+            case ast.ReduceUdfOutAttr(_, aname, _) => ast.AttrRef("", aname, "_" + myStart)
+            case _ => ast.AttrRef("ERROR", "", "")
+          }
+        }
+      }
+
+      case ast.Projection(attRefs, _) => {
+        attRefs.zipWithIndex.map { case (attrRef, i) => {
+          var x = i + 1
+          val attr = ast.AttrRef(attrRef.table, attrRef.col, s"_${x}")
+          attr
+        }
+        }
+      }
+      case ast.CrossJoin(lhs, rhs) => {
+        (lhs, rhs) match {
+          case (ast.TableScan(leftDfl, _), ast.TableScan(rightDfl, _)) => {
+            val leftCount = dflSchema.get(leftDfl.toLowerCase()).get.length + 1
+            getAttrSeq(lhs) ++ getAttrSeq(rhs, leftCount)
+          }
+          case _ => Seq(ast.AttrRef("ERROR", "", ""))
+        }
+      }
+      case ast.GroupBy(grouCols, aggFuncs, _) => {
+        val firstCols = grouCols.zipWithIndex.map { case (attrRef, i) => {
+          var x = i + 1
+          val attr = ast.AttrRef(attrRef.table, attrRef.col, s"_${x}")
+          attr
+        }
+        }
+        var startFrom = firstCols.length
+        //handles only first UDF (for KMeans use-case)
+        val restOfCols = aggFuncs.map { x =>
+          startFrom += 1
+          x match {
+            case ast.AggFuncReduce(aggFunc) =>
+              aggFunc match {
+                case reduceUdf@ast.AlgebraicReduceUdf(_, outAttrs, _, _) => getAttrSeq(reduceUdf, startFrom)
+                case _ => Seq()
+              }
+            case ast.AggFuncSimple(_, attrRef, _) => {
+              Seq(ast.AttrRef("DATAFLOW0003", attrRef.col, "_" + startFrom))
+            }
+            case _ => Seq()
+          }
+        }
+        firstCols ++ restOfCols.flatten
+      }
+      case _ => Seq()
+    }
+  }
+
   private def execute(dfl: ast.Op, dflName: String) =
     try {
-      val cmd = s"echo execute_query_from_json ${saveJson(dfl, dflName)} | nc localhost 8000"
+      val cmd = s"echo execute_query_from_json ${saveJson(dfl, dflName)} | nc localhost 8000".!!
       (s"echo execute_query_from_json ${saveJson(dfl, dflName)}" #| "nc localhost 8000").!!
     } catch {
       case e: Exception =>
@@ -119,7 +215,7 @@ class CoGaDB private(c: CoGaDB.Config) {
 
   def destroy(): Unit = {
     inst.destroy()
-    deleteRecursive(tempPath.toFile)
+    //deleteRecursive(tempPath.toFile)
   }
 
   /** Deletes a file recursively. */
@@ -136,7 +232,8 @@ object CoGaDB {
 
   case class Config
   (
-    coGaDBPath: Path = Paths.get(Option(System.getenv("COGADB_PATH")) getOrElse "/tmp/cogadb"),
+    //coGaDBPath: Path = Paths.get(Option(System.getenv("COGADB_HOME")) getOrElse "/tmp/cogadb"),
+    coGaDBPath: Path = Paths.get("/home/harry/falcon_test/falcon/release_build"),
     configPath: Path = Paths.get(getClass.getResource("/cogadb/default.coga").toURI)
   )
 

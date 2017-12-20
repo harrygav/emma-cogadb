@@ -16,9 +16,8 @@
 package org.emmalanguage
 package runtime
 
-import compiler.lang.cogadb.ast
 import api.CoGaDBTable
-import compiler.udf.ReduceUDFGenerator
+import compiler.lang.cogadb.ast
 import compiler.udf.UDFTransformer
 import compiler.udf.common.MapUDFClosure
 import io.csv.CSV
@@ -39,31 +38,47 @@ class KMeansSpec extends FreeSpec with Matchers with CoGaDBSpec {
 
   "k means example" in withCoGaDB { implicit cogadb: CoGaDB =>
 
+    val t0 = System.nanoTime()
+
     val A = CSVScalaSupport[(Double, Double)](csv).read(getClass.getResource("/kmeans_points.csv").getPath).toStream
     val B = CSVScalaSupport[(Int, Double, Double)](csv)
       .read(getClass.getResource("/kmeans_centroids.csv").getPath).toStream
 
 
     val points = new CoGaDBTable[(Double, Double)](cogadb.importSeq(A))
-    val centroids = new CoGaDBTable[(Int, Double, Double)](cogadb.importSeq(B))
+    var centroids = new CoGaDBTable[(Int, Double, Double)](cogadb.importSeq(B))
 
-    val distance = typecheck(reify {
-      () => (pcs: (Double, Double, Int, Double, Double)) =>
-        scala.math.sqrt(scala.math.pow(pcs._1 - pcs._3, 2) + scala.math.pow(pcs._2 - pcs._4, 2))
-    }.tree)
+    var mapCounter = 1;
+    var computedChange = 1.0
+    var iterations = 0;
 
+    while (computedChange > 0.01) {
+      println("CHANGE:" + computedChange + "CONTINUE:" + (computedChange > 0.01))
+
+      //cross join of points and centroids
     val cross = new CoGaDBTable[(Double, Double, Int, Double, Double)]({
       ast.CrossJoin(points.rep, centroids.rep)
     }).collect
 
     val crossed = new CoGaDBTable[(Double, Double, Int, Double, Double)](cogadb.importSeq(cross))
 
-    val map = new CoGaDBTable[(Double, Double, Int, Double, Double)](new UDFTransformer(
+      //apply map UDF on every (point, centroid) tuple to find distance
+      val distance = typecheck(reify {
+        () =>
+          (pcs: (Double, Double, Int, Double, Double)) =>
+            scala.math.sqrt(scala.math.pow(pcs._1 - pcs._4, 2) + scala.math.pow(pcs._2 - pcs._5, 2))
+      }.tree)
+
+      val map = new CoGaDBTable[(Double, Double, Int, Double, Double, Double)](new UDFTransformer(
       MapUDFClosure(distance, Map[String, String]("pcs" -> crossed.refTable), crossed.rep)).transform
-    ).collect
+      )
+      mapCounter += 1
+      //val mapped = new CoGaDBTable[(Double, Double, Int, Double, Double, Double)](cogadb.importSeq(map))
 
-    val mapped = new CoGaDBTable[(Double,Double,Int,Double,Double)](cogadb.importSeq(map))
+      //apply Grouping and reduce UDF to assign each point to a centroid
 
+      /*
+    Dynamic reduce UDF compilation does not work in the case when we have two output variables
     val symbolTable = Map[String, String](
       "p" -> mapped.refTable())
 
@@ -72,33 +87,125 @@ class KMeansSpec extends FreeSpec with Matchers with CoGaDBSpec {
     }.tree)
 
     val sngAst = typecheck(reify {
-      () => (p: (Double, Double, Int, Double, Double)) =>
-        if (p._1 > 0) {
-          p._2
-        }
-        else {
-          p._1
-        }
+      () =>
+        (p: (Double, Double, Int, Double, Double, Double)) =>
+          (p._3,p._6)
     }.tree)
 
     val uniAst = typecheck(reify {
-      () => (x: Double, y: Double) => x + y
+      () =>
+        (x: (Int, Double), y: Double) =>
+          if (x._2 < y) {
+            (x._1, x._2)
+          }
+          else {
+            (x._1,y)
+          }
     }.tree)
 
-    val actual = new CoGaDBTable[(Int,Int)](
+
+    val actual = new CoGaDBTable[(Double, Double, Int, Double, Double, Double, Double)](
+
       ast.GroupBy(Seq(mapped.ref("_1"),mapped.ref("_2")),
         Seq(
           new ReduceUDFGenerator(z, sngAst, uniAst, symbolTable, mapped.rep).generate
         ),mapped.rep)
       )
-    /*val reduced = new CoGaDBTable[(Double, Double, Int, Double, Double)](new UDFTransformer(
-      MapUDFClosure(distance, Map[String, String]("pcs" -> crossed.refTable), crossed.rep)).transform
-    )*/
+    */
+      //hand craft Reduce UDF for new centers
+      val reduce = new CoGaDBTable[(Double, Double, Int)](
+        ast.GroupBy(Seq(crossed.ref("_1"), crossed.ref("_2")),
+          Seq(
+            ast.AggFuncReduce(
+              ast.AlgebraicReduceUdf(
+                Seq(ast.ReduceUdfPayAttrRef("DOUBLE", "MIN_VALUE", ast.DoubleConst(4000000000D)),
+                  ast.ReduceUdfPayAttrRef("OID", "ID", ast.IntConst(0))),
+                Seq(ast.ReduceUdfOutAttr("OID", "CID", "CID")),
+                Seq(ast.ReduceUdfCode("if(#<hash_entry>.MIN_VALUE#>computed_var_MAP_UDF_RES_" + (mapCounter - 1) +
+                  "){#<hash_entry>.MIN_VALUE#=computed_var_MAP_UDF_RES_" + (mapCounter - 1) + ";" +
+                  "#<hash_entry>.ID#=#" + map.refTable() + "._3#;" + "}")),
+                Seq(ast.ReduceUdfCode("#<out>.CID# = #<hash_entry>.ID#;"))
+              )
+            )
+          ), map.rep
+        )
+      ).collect()
 
-    //val act = new CoGaDBTable[]()
+      val reduced = new CoGaDBTable[(Double, Double, Int)](cogadb.importSeq(reduce))
 
-    actual.collect().foreach(println)
-    //val exp = Seq((1, "foo", 2), (2, "bar", 3))
+      //compute new cluster centers
+
+      val newCenters = new CoGaDBTable[(Int, Double, Double)](
+        ast.GroupBy(
+          Seq(
+            reduced.ref("_3")
+          ),
+          Seq(ast.AggFuncSimple("AVG", reduced.ref("_1"), "_1"),
+            ast.AggFuncSimple("AVG", reduced.ref("_2"), "_2")),
+          reduced.rep
+        )
+      ).collect()
+
+      val newCentersRep = new CoGaDBTable[(Int, Double, Double)](cogadb.importSeq(newCenters))
+
+      //join old with new centroids
+
+      val joinedCentroids = new CoGaDBTable[(Int, Double, Double, Double, Double)](
+
+        ast.Projection(
+          Seq(centroids.ref("_1"), centroids.ref("_2"), centroids.ref("_3"),
+            newCentersRep.ref("_2"), newCentersRep.ref("_3")),
+          ast.Join("INNER_JOIN",
+            Seq(ast.ColCol(centroids.ref("_1"), newCentersRep.ref("_1"), ast.Equal)),
+            centroids.rep, newCentersRep.rep
+          ))
+      ).collect()
+
+      val joinedCentroidsRep = new CoGaDBTable[(Int, Double, Double, Double, Double)](cogadb.importSeq(joinedCentroids))
+
+      //compute change
+      val distance2 = typecheck(reify {
+        () =>
+          (xs: (Double, Double, Int, Double, Double)) =>
+            scala.math.sqrt(scala.math.pow(xs._2 - xs._4, 2) + scala.math.pow(xs._3 - xs._5, 2))
+      }.tree)
+
+      val mapped2 = new CoGaDBTable[(Int, Double, Double, Double, Double, Double)](new UDFTransformer(
+        MapUDFClosure(distance2, Map[String, String]("xs" -> joinedCentroidsRep.refTable),
+          joinedCentroidsRep.rep)).transform
+      ).collect()
+
+      val mapped2Rep = new CoGaDBTable[(Int, Double, Double, Double, Double, Double)](cogadb.importSeq(mapped2))
+
+
+      val change = new CoGaDBTable[Double](
+
+        ast.GroupBy(
+          Seq(),
+          Seq(ast.AggFuncSimple("SUM", mapped2Rep.ref("_6"), "_6")),
+          mapped2Rep.rep
+        )
+      )
+
+      computedChange = change.collect().head
+
+      val projectedCentroids = new CoGaDBTable[(Int, Double, Double)](
+        ast.Projection(
+          Seq(mapped2Rep.ref("_1"), mapped2Rep.ref("_4"), mapped2Rep.ref("_5")),
+          mapped2Rep.rep
+        )
+      ).collect()
+
+      centroids = newCentersRep
+      mapCounter += 1
+      iterations += 1
+    }
+
+    val t1 = System.nanoTime()
+    println("Elapsed time: " + (t1 - t0) * Math.pow(10, -6) + "ms")
+    println("Finished in " + iterations + " iterations with following centroids:")
+    centroids.collect().foreach(println)
+
 
     //act.collect() should contain theSameElementsAs (exp)
 

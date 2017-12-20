@@ -43,6 +43,7 @@ package object cogadb {
       alg.Join(joinType, predicate.map(fold(alg)), fold(alg)(lhs), fold(alg)(rhs))
     case ast.CrossJoin(lhs, rhs) => alg.CrossJoin(fold(alg)(lhs), fold(alg)(rhs))
     case ast.Limit(take, child) => alg.Limit(take, fold(alg)(child))
+    case ast.Rename(attRef, child) => alg.Rename(attRef.map(fold(alg)), fold(alg)(child))
     case ast.ExportToCsv(filename, separator, child) =>
       alg.ExportToCsv(filename, separator, fold(alg)(child))
     case ast.MaterializeResult(tableName, persistOnDisk, child) =>

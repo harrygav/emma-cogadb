@@ -245,7 +245,7 @@ class RuntimeSpec extends FreeSpec with Matchers with CoGaDBSpec {
     act.collect() should contain theSameElementsAs (exp)
   }
 
-  "test 3-way join" ignore withCoGaDB { implicit cogadb: CoGaDB =>
+  "test 3-way join" in withCoGaDB { implicit cogadb: CoGaDB =>
 
     val as = new CoGaDBTable[(Int, String)](cogadb.importSeq(Seq((1, "Foo"), (2, "Hello"))))
     val bs = new CoGaDBTable[(Int, String)](cogadb.importSeq(Seq((1, "Bar"), (2, "World"))))
@@ -297,6 +297,89 @@ class RuntimeSpec extends FreeSpec with Matchers with CoGaDBSpec {
       if a._1 == b._1
       if c._1 == a._1
     } yield (a._1, a._2, b._2, c._2)
+
+    act.collect() should contain theSameElementsAs exp
+
+  }
+  "test 4-way join" in withCoGaDB { implicit cogadb: CoGaDB =>
+
+    val aSeq = Seq((1, "This"), (2, "And"))
+    val bSeq = Seq((1, "is"), (2, "This"))
+    val cSeq = Seq((1, "a correct"), (2, "Is"))
+    val dSeq = Seq((1, "sentence"), (2, "Another One"))
+    val as = new CoGaDBTable[(Int, String)](cogadb.importSeq(aSeq))
+    val bs = new CoGaDBTable[(Int, String)](cogadb.importSeq(bSeq))
+    val cs = new CoGaDBTable[(Int, String, Int)](cogadb.importSeq(cSeq))
+    val ds = new CoGaDBTable[(Int, String)](cogadb.importSeq(dSeq))
+
+    val joinedAsBs = new CoGaDBTable[(Int, String, String)]({
+      val joinPredAsBs = Seq(
+        ast.ColCol(
+          lhs = as.ref("_1"),
+          rhs = bs.ref("_1"),
+          cmp = ast.Equal
+        )
+      )
+
+      val projectedFieldsAsBs = Seq(
+        as.ref("_1", "_1"),
+        as.ref("_2", "_2"),
+        bs.ref("_2", "_3")
+      )
+
+      ast.Projection(projectedFieldsAsBs,
+        ast.Join("INNER_JOIN", joinPredAsBs, as.rep, bs.rep))
+    })
+
+    val joinedCsDs = new CoGaDBTable[(Int, String, String)]({
+      val joinPredCsDs = Seq(
+        ast.ColCol(
+          lhs = cs.ref("_1"),
+          rhs = ds.ref("_1"),
+          cmp = ast.Equal
+        )
+      )
+
+      val projectedFieldsCsDs = Seq(
+        cs.ref("_1", "_1"),
+        cs.ref("_2", "_2"),
+        ds.ref("_2", "_2")
+      )
+
+      ast.Projection(projectedFieldsCsDs,
+        ast.Join("INNER_JOIN", joinPredCsDs, cs.rep, ds.rep))
+    })
+
+    val act = new CoGaDBTable[(Int, String, String, String, String)]({
+      val joinPred = Seq(
+        ast.ColCol(
+          lhs = joinedAsBs.ref("_1"),
+          rhs = joinedCsDs.ref("_1"),
+          cmp = ast.Equal
+        ))
+
+      val projectedFieldsAsBsCsDs = Seq(
+        as.ref("_1", "_1"),
+        as.ref("_2", "_2"),
+        bs.ref("_2", "_3"),
+        cs.ref("_2", "_4"),
+        ds.ref("_2", "_5")
+      )
+
+      ast.Projection(projectedFieldsAsBsCsDs,
+        ast.Join("INNER_JOIN", joinPred, joinedAsBs.rep, joinedCsDs.rep)
+      )
+    })
+
+    val exp = for {
+      a <- aSeq
+      b <- bSeq
+      c <- cSeq
+      d <- dSeq
+      if a._1 == b._1
+      if b._1 == c._1
+      if c._1 == d._1
+    } yield (a._1, a._2, b._2, c._2, d._2)
 
     act.collect() should contain theSameElementsAs exp
 

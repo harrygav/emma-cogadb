@@ -19,21 +19,49 @@ import api._
 object Playground extends CoGaDBAware {
 
   def main(args: Array[String]): Unit =
-    withCoGaDB(implicit cogadb => /*emma.onCoGaDB("debug.conf")*/ {
 
-      val xs = DataBag(Seq(1 -> 2, 2 -> 3, 3 -> 4))
-      val ys = DataBag(Seq(1 -> "foo", 2 -> "bar"))
+  //withCoGaDB(implicit cogadb => emma.onCoGaDB("debug.conf") {
+    withCoGaDB(implicit cogadb => emma.onCoGaDB("reference.emma.onCoGaDB.conf") {
+
+      val xs = DataBag(Seq(1 -> 2, 2 -> 2, 3 -> 4))
+      val ys = DataBag(Seq((1, "foo", "hallo"), (2, "bar", "bier")))
+      val as = DataBag(Seq(1 -> "a", 1 -> "b", 3 -> "c"))
+      /*val zs = for {
+        x <- xs
+        y <- ys
+        //a <- as
+        if x._1 == y._1
+        //if a._1 == x._1
+      } yield {
+        val newy = y._1*2
+        (x._1,newy)
+      }*/
+
+      /*val zs =  {
+        for {
+          Group(k, g) <- as.groupBy(_._1)
+        } yield {
+          val x = g.count(_._2=="foo")
+          k -> x
+        }
+      }*/
 
       val zs = for {
         x <- xs
-        y <- ys
-        if x._1 == y._1
-      } yield x
+        if x._1 > 1
+      } yield (x._1*18)
 
-
-      /*val as = for {
+      //val zs = xs.map(x => (x._1 * 3, x._2))
+      //val t = zs.collect().toList
+      /*val zs = for {
         x <- xs
-      } yield x._2*/
+        if (x._1) > 1
+      } yield {
+        def timesThree(x: Int): Int = x*3
+        val mult = timesThree(x._1)
+        (x._1, mult)
+      }*/
+
 
       val t = zs.collect().toList
 

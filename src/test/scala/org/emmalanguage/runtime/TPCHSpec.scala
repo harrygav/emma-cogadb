@@ -263,6 +263,13 @@ class TPCHSpec extends FreeSpec with Matchers with CoGaDBSpec {
     act.collect() shouldBe exp
 
   }
+  /*"TPCH-02" in withCoGaDB { implicit cogadb: CoGaDB =>
+
+    val tpch2 = new CoGaDBTable[(Double, String, String, Int, String, String, String, String)](
+      ast.Selection()
+    )
+
+  }*/
 
 
 }

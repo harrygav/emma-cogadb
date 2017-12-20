@@ -17,8 +17,8 @@ package org.emmalanguage
 package compiler.lang.cogadb
 
 import compiler.CoGaDBCompiler
-
 import util.Monoids._
+
 import shapeless._
 
 import scala.collection.breakOut
@@ -28,15 +28,17 @@ private[compiler] trait CoGaDBUDFSupport {
   self: CoGaDBCompiler =>
 
   import API.DataBag
-  import Core.{Lang => core}
+  import CoGaDBAPI.Exp
   import CoGaDBAPI.Ntv
   import CoGaDBAPI.Ops
+  import Core.{Lang => core}
   import UniverseImplicits._
 
 
   object CoGaUDFSupport {
 
     lazy val specializeOps: u.Tree => u.Tree = tree => {
+
       val cfg = ControlFlow.cfg(tree)
 
       val isSpecializableUseFor = (f: u.TermSymbol, vd: u.ValDef) => vd.rhs match {
@@ -68,15 +70,16 @@ private[compiler] trait CoGaDBUDFSupport {
             val mapFun = (f: u.TermSymbol) => core.Ref(sp(f).symbol.asTerm)
             if (sp contains lhs) sp(lhs)
             else rhs match {
-              // specialize `DataBag.withFilter` as `SparkOps.Native.select`
-              /*case core.DefCall(Some(xs), DataBag.withFilter, _, Seq(Seq(core.Ref(p))))
+              // specialize `DataBag.withFilter` as `CoGaDBNtv.select`
+              case core.DefCall(Some(xs), DataBag.withFilter, _, Seq(Seq(core.Ref(p))))
                 if sp contains p =>
                 val tgt = Ntv.ref
                 val met = Ntv.select
                 val tas = Seq(api.Type.arg(1, xs.tpe))
                 val ass = Seq(Seq(mapFun(p)), Seq(xs))
-                core.ValDef(lhs, core.DefCall(Some(tgt), met, tas, ass))*/
-              // specialize `DataBag.map` as `SparkOps.Native.project`
+                //println("SELECT")
+                core.ValDef(lhs, core.DefCall(Some(tgt), met, tas, ass))
+              // specialize `DataBag.map` as `CoGaDBNtv.project`
               case core.DefCall(Some(xs), DataBag.map, Seq(t), Seq(Seq(core.Ref(f))))
                 if sp contains f =>
                 val tgt = Ntv.ref
@@ -84,18 +87,35 @@ private[compiler] trait CoGaDBUDFSupport {
                 val tas = Seq(api.Type.arg(1, xs.tpe), t)
                 val ass = Seq(Seq(mapFun(f)), Seq(xs))
                 core.ValDef(lhs, core.DefCall(Some(tgt), met, tas, ass))
-              // specialize `SparkOps.equiJoin` as `SparkOps.Native.equiJoin`
+              //forward all non-specializable DataBag.map functions
+              case core.DefCall(Some(xs), DataBag.map, Seq(t), Seq(Seq(core.Ref(f))))
+                =>
+                val tgt = Ntv.ref
+                val met = Ntv.map
+                val tas = Seq(api.Type.arg(1, xs.tpe), t)
+                val ass = Seq(Seq(mapFun(f)), Seq(xs))
+                core.ValDef(lhs, core.DefCall(Some(tgt), met, tas, ass))
+
+              // specialize `CoGaDBOps.equiJoin` as `CoGaDBNtv.equiJoin`
               case core.DefCall(Some(ops), Ops.equiJoin, tas, JoinArgs(kx, ky, xs, ys))
                 if (sp contains kx) && (sp contains ky) =>
                 val tgt = Ntv.ref
                 val met = Ntv.equiJoin
                 val ass = Seq(Seq(mapFun(kx), mapFun(ky)), Seq(core.Ref(xs), core.Ref(ys)))
                 core.ValDef(lhs, core.DefCall(Some(tgt), met, tas, ass))
+
+              // specialize `CoGaDBOps.cross` as `CoGaDBNtv.cross`
+              case core.DefCall(_, Ops.cross, tas, ass) =>
+                val tgt = Ntv.ref
+                val met = Ntv.cross
+                core.ValDef(lhs, core.DefCall(Some(tgt), met, tas, ass))
+
               case _ =>
                 vd
             }
         }(tree).tree
     }
+
 
 
     lazy val specializeLambda: u.Tree => u.Tree = {
@@ -118,20 +138,20 @@ private[compiler] trait CoGaDBUDFSupport {
 
         if (valOf.contains(r)) {
           val mapSym = Map(
-            p -> api.TermSym.free(p.name, api.Type[String])
+            p -> api.TermSym.free(p.name, api.Type[ast.Row])
           ) ++ (vals.map(vd => {
             val x = vd.symbol.asTerm
             //println(x)
 
             val W =
-              if (x == r && isProductApply(x)) api.Type.kind1[Seq](api.Type[ast.AttrRef])
-              else api.Type[ast.AttrRef]
+              if (x == r && isProductApply(x)) api.Type[ast.Row]
+              else api.Type[ast.Row]
 
             val w = api.TermSym.free(x.name, W)
             x -> w
           })(breakOut): Map[u.TermSymbol, u.TermSymbol])
 
-          //println(mapSym)
+
           val mapArgs = (args: Seq[u.Tree]) => args map {
             case core.Ref(z) if mapSym contains z => core.Ref(mapSym(z))
             case arg => arg
@@ -142,39 +162,59 @@ private[compiler] trait CoGaDBUDFSupport {
             case core.DefCall(Some(core.Ref(z)), method, Seq(), Seq())
               if method.isGetter =>
 
-              //println(test)
               mapSym.get(z).map(w => {
-
-                val ags = Seq(core.Ref(w), core.Lit(method.name.toString), core.Lit(method.name.toString), core.Lit(1))
-                val rhs = core.DefCall(Some(core.Ref(tgt)), app, Seq(), Seq(ags))
+                val tgt = Exp.ref
+                val met = Exp.proj
+                val ags = Seq(core.Ref(w), core.Lit(method.name.toString))
+                val rhs = core.DefCall(Some(tgt), met, Seq(), Seq(ags))
                 core.ValDef(mapSym(x), rhs)
               })
 
             // translate case class constructors in return position
             case core.DefCall(_, app2, _, Seq(args))
-              if x == r && isProductApply(x) =>
+              if isProductApply(x) =>
 
-              val tgt1 = api.Sym[Seq.type].asModule
-              val app1 = tgt1.info.member(api.TermName.app).asMethod
+              val tgt1 = Exp.ref
+              val app1 = Exp.struct
 
-              val as1 = app.paramLists.head.map(p =>
+              val as1 = app2.paramLists.head.map(p =>
                 core.Lit(p.name.toString)
               )
               val as2 = args.map({
                 case core.Ref(a) if mapSym contains a => core.Ref(mapSym(a))
                 case a => a
               })
-              //val Tpe = api.Type.kind1[Seq](api.Sym[ast.AttrRef].tpe)
-              val lhs = mapSym(r)
+              val lhs = mapSym(x)
 
-              val argss = Seq(as2)
-              val rhs = core.DefCall(Some(core.Ref(tgt1)), app1, Seq(api.Type[ast.AttrRef]), argss)
+              val argss = Seq(as1, as2)
+              val rhs = core.DefCall(Some(tgt1), app1, Seq(), argss)
+              Some(core.ValDef(lhs, rhs))
+
+            // translate comparisons
+            case core.DefCall(Some(y), method, _, zs)
+              if isNumeric(y.tpe.widen) && (comparisonOf contains method.name) =>
+              val tgt = Exp.ref
+              val met = comparisonOf(method.name)
+              val asd = y +: zs.flatten
+              val ags = mapArgs(asd)
+              val rhs = core.DefCall(Some(tgt), met, Seq(), Seq(ags))
+              val lhs = api.TermSym.free(x.name, api.Type[ast.Row])
+              Some(core.ValDef(lhs, rhs))
+
+            // translate boolean operators
+            case core.DefCall(Some(y), method, _, zs)
+              if y.tpe.widen =:= api.Type.bool && (booleanOf contains method.name) =>
+              val tgt = Exp.ref
+              val met = booleanOf(method.name)
+              val ags = mapArgs(y +: zs.flatten)
+              val rhs = core.DefCall(Some(tgt), met, Seq(), Seq(ags))
+              val lhs = api.TermSym.free(x.name, api.Type[ast.Row])
               Some(core.ValDef(lhs, rhs))
 
             case _ => None
           }
 
-          val (vals2, expr1) = if (isProductApply(r)) {
+          /*val (vals2, expr1) = if (isProductApply(r)) {
             val vs2 = Seq.empty[Option[u.ValDef]]
             val ex2 = core.Ref(mapSym(r))
 
@@ -186,8 +226,8 @@ private[compiler] trait CoGaDBUDFSupport {
             val as2 = Seq(core.Ref(mapSym(r)))
 
             val agss = Seq(as2)
-            val rhs = core.DefCall(Some(core.Ref(tgt)), app, Seq(api.Type[ast.AttrRef]), agss)
-            val Tpe = api.Type.kind1[Seq](api.Type[ast.AttrRef])
+            val rhs = core.DefCall(Some(core.Ref(tgt)), app, Seq(api.Type[ast.StructRow]), agss)
+            val Tpe = api.Type.kind1[Seq](api.Type[ast.Row])
             val lhs = api.TermSym.free(api.TermName.fresh("r"), Tpe)
 
             val vs2 = Seq(Some(core.ValDef(lhs, rhs)))
@@ -199,7 +239,13 @@ private[compiler] trait CoGaDBUDFSupport {
 
           //vals1.foreach(println)
           val ret = core.Lambda(Seq(mapSym(p)), core.Let((vals1 ++ vals2).flatten, Seq(), expr1))
-          ret
+          println(ret)
+          ret*/
+          //alternative
+          val expr1 = core.Ref(mapSym(r))
+
+          if (vals1.exists(_.isEmpty)) lambda // not all valdefs were translated
+          else core.Lambda(Seq(mapSym(p)), core.Let(vals1.flatten, Seq(), expr1))
         } else lambda
 
     }
@@ -235,22 +281,22 @@ private[compiler] trait CoGaDBUDFSupport {
 
   private lazy val booleanOf = Map(
     //@formatter:off
-    api.TermName("unary_!" ) -> ???,
-    api.TermName("&&")       -> ast.And,
-    api.TermName("||" )      -> ast.Or
+    api.TermName("unary_!" ) -> Exp.not,
+    api.TermName("&&")       -> Exp.and,
+    api.TermName("||" )      -> Exp.or
     //@formatter:on
   )
 
   private lazy val comparisonOf = Map(
     //@formatter:off
-    api.TermName(">" ) -> ast.GreaterThan,
-    api.TermName(">=") -> ast.GreaterEqual,
-    api.TermName("<" ) -> ast.LessThan,
-    api.TermName("<=") -> ast.LessEqual,
-    api.TermName("==") -> ast.Equal,
-    api.TermName("eq") -> ast.Equal,
-    api.TermName("!=") -> ast.Unequal,
-    api.TermName("ne") -> ast.Unequal
+    api.TermName(">" ) -> Exp.gt,
+    api.TermName(">=") -> Exp.geq,
+    api.TermName("<" ) -> Exp.lt,
+    api.TermName("<=") -> Exp.leq,
+    api.TermName("==") -> Exp.eq,
+    api.TermName("eq") -> Exp.eq,
+    api.TermName("!=") -> Exp.ne,
+    api.TermName("ne") -> Exp.ne
     //@formatter:on
   )
 
@@ -265,6 +311,6 @@ private[compiler] trait CoGaDBUDFSupport {
   )
 
   private lazy val stringOf = Map(
-    api.TermName("startsWith") -> ???
+    api.TermName("startsWith") -> Exp.startsWith
   )
 }

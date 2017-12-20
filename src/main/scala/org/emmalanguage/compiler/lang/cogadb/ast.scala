@@ -38,12 +38,13 @@ object ast {
   case class GroupBy(groupCols: Seq[AttrRef], aggFuncs: Seq[AggFunc], child: Op) extends Op
   case class Selection(predicate: Seq[Predicate], child: Op) extends Op
   case class TableScan(tableName: String, version: Short = 1) extends Op
-  //case class Projection(attRef: Ref, child: Op) extends Op
   case class Projection(attRef: Seq[AttrRef], child: Op) extends Op
   case class MapUdf(mapUdfOutAttr: Seq[MapUdfOutAttr], mapUdfCode: Seq[MapUdfCode], child: Op) extends Op
   case class Join(joinType: String, predicate: Seq[Predicate], lhs: Op, rhs: Op) extends Op
   case class CrossJoin(lhs: Op, rhs: Op) extends Op
   case class Limit(take: Int, child: Op) extends Op
+
+  case class Rename(attrRef: Seq[AttrRef], child: Op) extends Op
 
   case class ExportToCsv(filename: String, separator: String, child: Op) extends Op
   case class MaterializeResult(tableName: String, persistOnDisk: Boolean, child: Op) extends Op
@@ -54,8 +55,9 @@ object ast {
   // Predicates
   // ---------------------------------------------------------------------------
 
+  sealed trait Expr extends Node
   //@formatter:off
-  sealed trait Predicate extends Node
+  sealed trait Predicate extends Expr
   case class And(conj: Seq[Predicate]) extends Predicate
   case class Or(disj: Seq[Predicate]) extends Predicate
   case class ColCol(lhs: AttrRef, rhs: AttrRef, cmp: Comparator) extends Predicate
@@ -72,10 +74,7 @@ object ast {
   // scalastyle:on
   case class SchemaAttr(atype: String, aname: String) extends Node
 
-  trait Ref extends Node
-  case class StructRef(fields: Seq[(String, Ref)]) extends Ref
-
-  case class AttrRef(table: String, col: String, result: String, version: Short = 1) extends Ref
+  case class AttrRef(table: String, col: String, result: String, version: Short = 1) extends Expr
 
   case class MapUdfCode(code: String) extends Node
   case class MapUdfOutAttr(attType: String, attName: String, intVarName: String) extends Node
@@ -103,7 +102,7 @@ object ast {
   case class ReduceUdfOutAttrRef(attType: String, attName: String, intVarName: String) extends Node
   case class ReduceUdfPayAttrRef(attType: String, attName: String, attInitVal: Const) extends Node
 
-  sealed trait Const extends Node {
+  sealed trait Const extends Expr {
     type A
     val value: A
   }
@@ -145,20 +144,37 @@ object ast {
   //@formatter:on
 
   // ---------------------------------------------------------------------------
-  // Helpers
+  // Row
   // ---------------------------------------------------------------------------
 
-  def flatten(refs: Seq[Ref]): Seq[AttrRef] = for {
-    r <- refs
-    f <- flatten(r)
-  } yield f
+  sealed /*private[emmalanguage]*/ trait Row {
+    def proj(name: String): Row
 
-
-  private def flatten(ref: Ref): Seq[AttrRef] = ref match {
-    case ref: AttrRef => Seq(ref)
-    case StructRef(fields) => flatten(fields.map(_._2))
+    def attr: Seq[ast.Expr]
   }
 
+  /*object Row {
+    def times(c1: Row, c2: Row): Row =
+      StructRow(Seq("_1", "_2"), Seq(c1, c2))
+  }*/
+
+  case class StructRow(keys: Seq[String], vals: Seq[Row]) extends Row {
+    def proj(key: String): Row =
+      vals(keys.indexOf(key))
+
+    def attr: Seq[ast.Expr] =
+      vals.flatMap(_.attr)
+  }
+
+  case class SimpleRow(value: ast.Expr) extends Row {
+    def proj(key: String): Row = key match {
+      case "value" => this
+      case _ => throw new IllegalArgumentException(s"Unsupported field value `$key` of simple row.")
+    }
+
+    def attr: Seq[ast.Expr] =
+      Seq(value)
+  }
 }
 
 // scalastyle:on number.of.methods

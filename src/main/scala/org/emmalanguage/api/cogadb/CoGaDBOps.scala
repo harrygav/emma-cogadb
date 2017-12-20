@@ -18,6 +18,7 @@ package api.cogadb
 
 import api._
 import api.alg._
+import compiler.lang.cogadb.ast
 import api.backend.ComprehensionCombinators
 import api.backend.Runtime
 import runtime.CoGaDB
@@ -39,6 +40,7 @@ object CoGaDBOps extends ComprehensionCombinators[CoGaDB] with Runtime[CoGaDB] {
   def cross[A: Meta, B: Meta](
     xs: DataBag[A], ys: DataBag[B]
   )(implicit cogadb: CoGaDB): DataBag[(A, B)] = (xs, ys) match {
+    //case (table(xs), table(ys)) => table(ast.CrossJoin(xs,ys))
     case _ => ???
     //case (rdd(us), rdd(vs)) => rdd(us cartesian vs)
   }
@@ -47,7 +49,7 @@ object CoGaDBOps extends ComprehensionCombinators[CoGaDB] with Runtime[CoGaDB] {
     kx: A => K, ky: B => K)(xs: DataBag[A], ys: DataBag[B]
   )(implicit cogadb: CoGaDB): DataBag[(A, B)] = (xs, ys) match {
     case _ => ???
-    //case (rdd(us), rdd(vs)) => rdd((us.map(extend(kx)) join vs.map(extend(ky))).values)
+    //case (rdd(us), rdd(vs)) =>g rdd((us.map(extend(kx)) join vs.map(extend(ky))).values)
   }
 
   private def extend[X, K](k: X => K): X => (K, X) =
@@ -79,16 +81,16 @@ object CoGaDBOps extends ComprehensionCombinators[CoGaDB] with Runtime[CoGaDB] {
   // Helper Objects
   //----------------------------------------------------------------------------
 
-  private object cogadbTable {
+  private object table {
     def apply[A: Meta](
-      rep: CoGaDBTable[A]
-    )(implicit cogadb: CoGaDB): DataBag[A] = rep
+      rep: ast.Op
+    )(implicit cogadb: CoGaDB): DataBag[A] = new CoGaDBTable(rep)
 
     def unapply[A: Meta](
       bag: DataBag[A]
-    )(implicit cogadb: CoGaDB): Option[CoGaDBTable[A]] = bag match {
-      case bag: CoGaDBTable[A] => Some(new CoGaDBTable(bag.rep))//Some(bag.rep)
-      //case _ => Some(cogadb.parallelize(bag.collect()))
+    )(implicit cogadb: CoGaDB): Option[ast.Op] = bag match {
+      case bag: CoGaDBTable[A] => Some(bag.rep)
+      case _ => None
     }
   }
 

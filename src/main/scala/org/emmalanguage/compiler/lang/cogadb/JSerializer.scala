@@ -180,6 +180,17 @@ object JSerializer extends Algebra[JValue] {
       JField("FIELD_SEPARATOR", separator)
     )
 
+  override def Rename(attrRef: Seq[JValue], child: JValue): JValue =
+    JObject(
+      JField("OPERATOR_NAME", "RENAME"),
+      JField("RENAMING", JArray(attrRef.toList.map(a => JObject(
+        JField("ATTRIBUTE_REFERENCE", a)
+      ))
+      )),
+      JField("LEFT_CHILD", child),
+      JField("RIGHT_CHILD", JNull)
+    )
+
   // -------------------------------------------------------------------------
   // Predicates
   // -------------------------------------------------------------------------
@@ -310,7 +321,7 @@ object JSerializer extends Algebra[JValue] {
     )
   def DoubleConst(value: Double): JValue =
     JObject(
-      JField("CONSTANT_VALUE", value.toString),
+      JField("CONSTANT_VALUE", f"$value%1.0f"),
       JField("CONSTANT_TYPE", "DOUBLE")
     )
   def CharConst(value: Char): JValue =

@@ -45,7 +45,7 @@ class CoGaDBTableSpec extends FreeSpec with Matchers with CoGaDBSpec {
   def withBackendContext[T](f: BackendContext => T): T = withCoGaDB(f)
 
   "monad ops" - {
-    "map" ignore withBackendContext { implicit ctx =>
+    "map" in withBackendContext { implicit ctx =>
       val act = TestBag(hhCrts.map(c => (c.book.title,c.name)))
         .map(c => c._1)
 

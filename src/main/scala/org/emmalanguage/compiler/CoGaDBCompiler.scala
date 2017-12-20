@@ -16,35 +16,41 @@
 package org.emmalanguage
 package compiler
 
-import lang.cogadb.ast
 import lang.cogadb.CoGaDBUDFSupport
+import lang.cogadb.ast
 
 trait CoGaDBCompiler extends Compiler with CoGaDBUDFSupport {
 
-  override lazy val implicitTypes: Set[u.Type] = API.implicitTypes/* ++ SparkAPI.implicitTypes*/
+  override lazy val implicitTypes: Set[u.Type] = API.implicitTypes ++ CoGaDBAPI.implicitTypes
 
   trait NtvAPI extends ModuleAPI {
     //@formatter:off
     val sym               = api.Sym[org.emmalanguage.api.cogadb.CoGaDBNtv.type].asModule
 
-    //val select            = op("select")
+    val select            = op("select")
+    val map               = op("map")
     val project           = op("project")
     val equiJoin          = op("equiJoin")
+    val cross             = op("cross")
 
-    override lazy val ops = Set(/*select,*/ project, equiJoin)
+
+    override lazy val ops = Set(select, project, cross, equiJoin)
     //@formatter:on
   }
 
-  trait CoGaDBAPI extends ModuleAPI {
+  trait CoGaDBExpAPI extends ModuleAPI {
     //@formatter:off
     val Column      = api.Type[ast.AttrRef]
-    //val sym         = api.Sym[org.emmalanguage.api.cogadb.type].asModule
+    val sym         = api.Sym[org.emmalanguage.api.cogadb.CoGaDBExp.type].asModule
+
+
 
     // projections
-    val rootProj    = op("rootProj")
-    val nestProj    = op("nestProj")
+    val proj        = op("proj")
+    val struct        = op("struct")
+    /*val nestProj    = op("nestProj")
     val rootStruct  = op("rootStruct")
-    val nestStruct  = op("nestStruct")
+    val nestStruct  = op("nestStruct")*/
     // comparisons
     val eq          = op("eq", List(2, 1))
     val ne          = op("ne", List(2, 1))
@@ -65,21 +71,25 @@ trait CoGaDBCompiler extends Compiler with CoGaDBUDFSupport {
     // string
     val startsWith  = op("startsWith")
 
-    val projections = Set(rootProj, nestProj, rootStruct, nestStruct)
+    val structural = Set(proj)
     val comparisons = Set(eq, ne, lt, gt, leq, geq)
     val boolean     = Set(not, and, or)
     val arithmetic  = Set(plus, minus, multiply, divide, mod)
     val string      = Set(startsWith)
 
-    val ops         = projections ++ comparisons ++ boolean ++ arithmetic ++ string
+    val ops         = structural ++ comparisons ++ boolean ++ arithmetic ++ string
     //@formatter:on
   }
 
-  trait CoGaDBAPILike extends BackendAPI {
+  object CoGaDBAPI extends BackendAPI {
     //lazy val Encoder = api.Type[org.apache.spark.sql.Encoder[Any]].typeConstructor
     lazy val CoGaDBRuntime = api.Type[org.emmalanguage.runtime.CoGaDB]
 
     lazy val implicitTypes = Set(CoGaDBRuntime)
+
+    lazy val DataBag = new DataBagAPI(api.Sym[org.emmalanguage.api.CoGaDBTable[Any]].asClass)
+
+    lazy val DataBag$ = new DataBag$API(api.Sym[org.emmalanguage.api.CoGaDBTable.type].asModule)
 
     lazy val MutableBag = API.MutableBag
 
@@ -89,20 +99,18 @@ trait CoGaDBCompiler extends Compiler with CoGaDBUDFSupport {
 
     lazy val Ntv = new NtvAPI {}
 
-    //lazy val Exp = new SparkExpAPI {}
+    lazy val Exp = new CoGaDBExpAPI {}
   }
 
+  /*
+    object CoGaDBAPI extends CoGaDBAPILike {
 
-  object CoGaDBAPI extends CoGaDBAPILike {
-    lazy val DataBag = new DataBagAPI(api.Sym[org.emmalanguage.api.CoGaDBTable[Any]].asClass)
+    }
 
-    lazy val DataBag$ = new DataBag$API(api.Sym[org.emmalanguage.api.CoGaDBTable.type].asModule)
-  }
-/*
-  object SparkAPI2 extends SparkAPILike {
-    lazy val DataBag = new DataBagAPI(api.Sym[org.emmalanguage.api.SparkDataset[Any]].asClass)
+    object SparkAPI2 extends SparkAPILike {
+      lazy val DataBag = new DataBagAPI(api.Sym[org.emmalanguage.api.SparkDataset[Any]].asClass)
 
-    lazy val DataBag$ = new DataBag$API(api.Sym[org.emmalanguage.api.SparkDataset.type].asModule)
-  }*/
+      lazy val DataBag$ = new DataBag$API(api.Sym[org.emmalanguage.api.SparkDataset.type].asModule)
+    }*/
 
 }
