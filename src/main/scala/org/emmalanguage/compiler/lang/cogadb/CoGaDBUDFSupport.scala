@@ -88,13 +88,13 @@ private[compiler] trait CoGaDBUDFSupport {
                 val ass = Seq(Seq(mapFun(f)), Seq(xs))
                 core.ValDef(lhs, core.DefCall(Some(tgt), met, tas, ass))
               //forward all non-specializable DataBag.map functions
-              case core.DefCall(Some(xs), DataBag.map, Seq(t), Seq(Seq(core.Ref(f))))
+              /*case core.DefCall(Some(xs), DataBag.map, Seq(t), Seq(Seq(core.Ref(f))))
                 =>
                 val tgt = Ntv.ref
                 val met = Ntv.map
                 val tas = Seq(api.Type.arg(1, xs.tpe), t)
                 val ass = Seq(Seq(mapFun(f)), Seq(xs))
-                core.ValDef(lhs, core.DefCall(Some(tgt), met, tas, ass))
+                core.ValDef(lhs, core.DefCall(Some(tgt), met, tas, ass))*/
 
               // specialize `CoGaDBOps.equiJoin` as `CoGaDBNtv.equiJoin`
               case core.DefCall(Some(ops), Ops.equiJoin, tas, JoinArgs(kx, ky, xs, ys))
